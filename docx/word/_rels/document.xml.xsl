@@ -45,7 +45,18 @@
             <xsl:text>media/</xsl:text>
             <xsl:choose>
               <xsl:when test="ends-with(../@href, '.svg')">
-                <xsl:value-of select="replace(../@href, '\.svg$', '.emf')"/>
+                <xsl:variable name="fileName">
+                  <xsl:choose>
+                  <!--EXM-44025 Use only last part of href path.-->
+                    <xsl:when test="contains(../@href, '/')">
+                      <xsl:value-of select="tokenize(../@href, '/')[last()]"/>                    
+                    </xsl:when>
+                    <xsl:otherwise>
+                      <xsl:value-of select="../@href"/>
+                    </xsl:otherwise>
+                  </xsl:choose>
+                </xsl:variable>
+                <xsl:value-of select="replace($fileName, '\.svg$', '.emf')"/>
               </xsl:when>
               <xsl:otherwise>
                 <xsl:value-of select="../@href"/>

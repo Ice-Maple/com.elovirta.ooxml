@@ -54,4 +54,5 @@
     <xsl:sequence select="xs:integer($sectPr/w:pgSz/@w:w) - xs:integer($sectPr/w:pgMar/@w:left) - xs:integer($sectPr/w:pgMar/@w:right)"/>
   </xsl:variable>
 
+  <xsl:param name="instep" select="'yes'" as="xs:string"/>
 </xsl:stylesheet>

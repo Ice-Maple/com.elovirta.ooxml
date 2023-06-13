@@ -19,7 +19,8 @@
                exclude-result-prefixes="x xs opentopic opentopic-index ot-placeholder"
                version="2.0">
 
-  <xsl:variable name="tocMaximumLevel" select="9" as="xs:integer"/>
+  <xsl:variable name="tocMaximumLevel" select="3" as="xs:integer"/>	       
+  <!--xsl:variable name="tocMaximumLevel" select="9" as="xs:integer"/-->
 
   <xsl:template match="ot-placeholder:toc">
     <xsl:apply-templates select="/" mode="toc"/>
@@ -27,6 +28,11 @@
 
   <xsl:template match="/" mode="toc" name="toc">
     <xsl:comment>TOC</xsl:comment>
+    <w:p>
+      <w:r>
+        <w:br w:type="page"/>
+      </w:r>
+    </w:p>
     <w:p>
       <w:pPr>
         <w:pStyle w:val="TOCHeading"/>

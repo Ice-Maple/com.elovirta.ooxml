@@ -10,7 +10,10 @@
                 exclude-result-prefixes="x xs opentopic">
 
   <xsl:template match="/">
-    <Properties/>
+    <xsl:for-each select="*">
+      <xsl:copy-of select="."/>
+    </xsl:for-each>
+    <!--Properties/-->
   </xsl:template>
 
 </xsl:stylesheet>

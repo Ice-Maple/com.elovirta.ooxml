@@ -20,6 +20,17 @@
   <!-- monospaced -->
   <xsl:template match="*[contains(@class, ' pr-d/codeblock ')]" mode="block-style">
     <w:pStyle w:val="HTMLPreformatted"/>
+    <xsl:variable name="depth" as="xs:integer">
+      <xsl:apply-templates select="." mode="block-depth"/>
+    </xsl:variable>
+    <xsl:choose>
+      <xsl:when test="exists(ancestor::*[contains(@class, ' topic/entry ') or contains(@class, ' topic/stentry ') or contains(@class, ' topic/dlentry ') ])">
+        <w:ind w:left="{x:get-indent($depth - 1)}"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <w:ind w:left="{x:get-indent($depth)}"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
   <xsl:template match="*[contains(@class, ' pr-d/codeblock ')]" mode="inline-style">
     <w:rStyle w:val="HTMLCode"/>
@@ -235,5 +246,4 @@
     </xsl:if>
   </xsl:template>
   
-
 </xsl:stylesheet>

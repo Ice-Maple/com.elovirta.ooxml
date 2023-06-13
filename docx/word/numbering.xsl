@@ -10,7 +10,32 @@
   xmlns:w10="urn:schemas-microsoft-com:office:word"
   xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:x="com.elovirta.ooxml" version="2.0"
-  exclude-result-prefixes="x xs">
+  exclude-result-prefixes="x xs"
+  xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:cx="http://schemas.microsoft.com/office/drawing/2014/chartex"
+  xmlns:cx1="http://schemas.microsoft.com/office/drawing/2015/9/8/chartex"
+  xmlns:cx2="http://schemas.microsoft.com/office/drawing/2015/10/21/chartex"
+  xmlns:cx3="http://schemas.microsoft.com/office/drawing/2016/5/9/chartex"
+  xmlns:cx4="http://schemas.microsoft.com/office/drawing/2016/5/10/chartex"
+  xmlns:cx5="http://schemas.microsoft.com/office/drawing/2016/5/11/chartex"
+  xmlns:cx6="http://schemas.microsoft.com/office/drawing/2016/5/12/chartex"
+  xmlns:cx7="http://schemas.microsoft.com/office/drawing/2016/5/13/chartex"
+  xmlns:cx8="http://schemas.microsoft.com/office/drawing/2016/5/14/chartex"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:aink="http://schemas.microsoft.com/office/drawing/2016/ink"
+  xmlns:am3d="http://schemas.microsoft.com/office/drawing/2017/model3d"
+  xmlns:oel="http://schemas.microsoft.com/office/2019/extlst"
+  xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"
+  xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+  xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"
+  xmlns:w16cex="http://schemas.microsoft.com/office/word/2018/wordml/cex"
+  xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid"
+  xmlns:w16="http://schemas.microsoft.com/office/word/2018/wordml"
+  xmlns:w16sdtdh="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash"
+  xmlns:w16se="http://schemas.microsoft.com/office/word/2015/wordml/symex"
+  xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+  xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"
+  xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" w:val="D2E0657C">
 
   <xsl:import href="document.xsl"/>
 
@@ -24,6 +49,7 @@
             <xsl:call-template name="ol">
               <xsl:with-param name="number" select="."/>
               <xsl:with-param name="indent-start" select="xs:integer($indent-base)"/>
+              <xsl:with-param name="intable" select="exists(ancestor::*[contains(@class, ' topic/entry ') or contains(@class, ' topic/stentry ') or contains(@class, ' topic/dlentry ') ])"/>
             </xsl:call-template>
           </xsl:when>
           <xsl:otherwise>
@@ -40,6 +66,33 @@
       <xsl:for-each select="//@x:list-number">
         <w:num w:numId="{.}">
           <w:abstractNumId w:val="{.}"/>
+          <w:lvlOverride w:ilvl="0">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="1">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="2">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="3">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="4">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="5">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="6">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="7">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
+          <w:lvlOverride w:ilvl="8">
+            <w:startOverride w:val="1" />
+          </w:lvlOverride>
         </w:num>
       </xsl:for-each>
       <!-- original numberings -->
@@ -50,16 +103,39 @@
   <xsl:template name="ol">
     <xsl:param name="number" as="xs:string"/>
     <xsl:param name="indent-start" as="xs:integer"/>
+    <xsl:param name="intable" as="xs:boolean"/>
     <xsl:apply-templates select="." mode="ol">
       <xsl:with-param name="number" select="$number"/>
       <xsl:with-param name="indent-start" select="$indent-start"/>
+      <xsl:with-param name="intable" select="$intable"/>
     </xsl:apply-templates>
   </xsl:template>
 
   <xsl:template match="@* | node()" mode="ol">
     <xsl:param name="number"/>
     <xsl:param name="indent-start" as="xs:integer"/>
-    <!-- Ordered list -->
+    <xsl:param name="intable" as="xs:boolean" select="false()"/>
+    <w:abstractNum w:abstractNumId="{$number}">
+      <xsl:choose>
+        <xsl:when test="$intable">
+          <xsl:for-each select="$doc/w:numbering/w:abstractNum[descendant::w:pStyle[@w:val='ItemStepinTable']]/*">
+            <xsl:copy-of select="."/>
+          </xsl:for-each>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:for-each select="$doc/w:numbering/w:abstractNum[descendant::w:pStyle[@w:val='Heading1']]/*">
+            <xsl:copy-of select="."/>
+          </xsl:for-each>
+        </xsl:otherwise>
+      </xsl:choose>     
+    </w:abstractNum>
+  </xsl:template>
+
+
+
+  <!--xsl:template match="@* | node()" mode="ol">
+    <xsl:param name="number"/>
+    <xsl:param name="indent-start" as="xs:integer"/>
     <w:abstractNum w:abstractNumId="{$number}">
       <w:multiLevelType w:val="hybridMultilevel"/>
       <w:lvl w:ilvl="0">
@@ -153,7 +229,7 @@
         </w:pPr>
       </w:lvl>
     </w:abstractNum>
-  </xsl:template>
+  </xsl:template-->
   
   <xsl:template name="ul">
     <xsl:param name="number" as="xs:string"/>

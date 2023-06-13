@@ -23,10 +23,11 @@
 
   <xsl:param name="image.dir"/>
   <!-- FIXME this should be xs:integer -->
-  <xsl:param name="indent-base" as="xs:string?" select="string((x:get-style-indent('BodyText'), 0)[1])"/>
+  <xsl:param name="indent-base" as="xs:string?" select="string((x:get-style-indent('Normal'), 0)[1])"/>
+  <!--xsl:param name="indent-base" as="xs:string?" select="string((x:get-style-indent('BodyText'), 0)[1])"/-->
   
   <!-- FIXME this should be xs:integer -->
-  <xsl:param name="increment-base" select="'720'"/>
+  <xsl:param name="increment-base" select="'312'"/>
 
   <xsl:variable name="auto-number" select="true()" as="xs:boolean"/>
 
@@ -67,7 +68,19 @@
   </xsl:template>
   
   <xsl:template match="node()" mode="block-style.default">
-    <w:pStyle w:val="BodyText"/>
+    <xsl:variable name="table_head" as="xs:boolean" select="exists(ancestor::*[contains(@class, ' topic/thead ') or contains(@class, ' topic/sthead ') or contains(@class, 'topic/dt ')])"/>
+    <xsl:variable name="table_text" as="xs:boolean" select="exists(ancestor::*[contains(@class, ' topic/tbody ') or contains(@class, ' topic/strow ') or contains(@class, ' topic/dd ')])"/>
+    <xsl:choose>
+      <xsl:when test="$table_head">
+        <w:pStyle w:val="TableHeading"/>
+      </xsl:when>
+      <xsl:when test="$table_text">
+        <w:pStyle w:val="TableText"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <w:pStyle w:val="BodyText"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
 
   <xsl:variable name="body-section" as="element()*">
@@ -125,6 +138,7 @@
   <xsl:template name="start-bookmark">
     <xsl:param name="node" select=".[@id]" as="element()?"/>
     <xsl:param name="type" as="xs:string?" select="()"/>
+    <xsl:comment>id <xsl:value-of select="$node/@id"/></xsl:comment>
     <xsl:if test="exists($node)">
       <w:bookmarkStart w:id="ref_{$type}{x:generate-id($node)}" w:name="{x:bookmark-name(concat($bookmark-prefix.ref, $type), $node)}"/>
       <w:bookmarkStart w:id="toc_{$type}{x:generate-id($node)}" w:name="{x:bookmark-name(concat($bookmark-prefix.toc, $type), $node)}"/>
@@ -157,19 +171,34 @@
   </xsl:template>
 
   <xsl:template match="*[contains(@class, ' topic/topic ')]/
-                         *[contains(@class, ' topic/title ')]"
-                name="topic.title">
+    *[contains(@class, ' topic/title ')]"
+    name="topic.title">
     <xsl:variable name="depth" select="count(ancestor-or-self::*[contains(@class, ' topic/topic ')])" as="xs:integer"/>
+    <xsl:if test="$depth eq 1">
+      <w:p>
+        <w:r>
+          <w:br w:type="page"/>
+        </w:r>
+      </w:p>
+    </xsl:if>
     <w:p>
       <w:pPr>
         <xsl:apply-templates select="." mode="block-style"/>
       </w:pPr>
+      <!-- OXYGEN PATCH FOR EXM-43514-->
+      <xsl:call-template name="start-bookmark-number">
+        <xsl:with-param name="node" select=".."/>
+      </xsl:call-template>
       <xsl:call-template name="start-bookmark">
         <xsl:with-param name="node" select=".."/>
       </xsl:call-template>
       <xsl:apply-templates select="." mode="numbering"/>
       <xsl:apply-templates/>
       <xsl:call-template name="end-bookmark">
+        <xsl:with-param name="node" select=".."/>
+      </xsl:call-template>
+      <!-- OXYGEN PATCH FOR EXM-43514-->
+      <xsl:call-template name="end-bookmark-number">
         <xsl:with-param name="node" select=".."/>
       </xsl:call-template>
     </w:p>
@@ -218,6 +247,9 @@
     <xsl:param name="style">
       <xsl:apply-templates select="." mode="block-style"/>
     </xsl:param>
+    <xsl:call-template name="start-bookmark">
+      <xsl:with-param name="node" select=".." as="element()"/>
+    </xsl:call-template>
     <w:p>
       <xsl:if test="exists($style)">
         <w:pPr>
@@ -226,6 +258,9 @@
       </xsl:if>
       <xsl:copy-of select="$contents"/>
     </w:p>
+    <xsl:call-template name="end-bookmark">
+      <xsl:with-param name="node" select=".." as="element()"/>
+    </xsl:call-template>
   </xsl:template>
   
   <xsl:template match="*[contains(@class, ' topic/section ')]/*[contains(@class, ' topic/title ')] |
@@ -233,7 +268,7 @@
                 mode="block-style"
                 name="block-style-section.title"
                 as="element()*">
-    <w:pStyle w:val="Subtitle"/>
+    <w:pStyle w:val="Heading5"/>
   </xsl:template>
 
   <xsl:template match="*[contains(@class, ' topic/example ')]">
@@ -241,7 +276,11 @@
      <xsl:call-template name="section.title">
        <xsl:with-param name="contents">
          <w:r>
-           <w:t>Example</w:t>
+           <w:t>
+            <xsl:call-template name="getVariable">
+              <xsl:with-param name="id" select="'task_example'"/>
+            </xsl:call-template>
+           </w:t>
          </w:r>
        </xsl:with-param>
        <xsl:with-param name="style">
@@ -357,6 +396,9 @@
   <xsl:template name="generate-block-style">
     <xsl:variable name="root" select="(ancestor::*[contains(@class, ' topic/table ') or contains(@class, ' topic/simpletable ') or contains(@class, ' topic/fig ')][1], /*)[1]" as="element()?" />
     <xsl:variable name="ancestor-lis" select="ancestor::*[contains(@class, ' topic/li ')][. >> $root]" as="element()*"/>
+    <xsl:variable name="intable" as="xs:boolean" select="exists(ancestor::*[contains(@class, ' topic/entry ') or contains(@class, ' topic/stentry ') or contains(@class, ' topic/dlentry ') ])"/>
+    <xsl:variable name="ul" as="xs:boolean" select="contains(../../@class, 'topic/ul') and contains(../@class, 'topic/li')"/>
+    <xsl:variable name="stepsection" as="xs:boolean" select="contains(../@class, 'task/stepsection')"/>
     <xsl:variable name="styles" as="node()*">
       <xsl:apply-templates select="." mode="block-style"/>
     </xsl:variable>
@@ -372,18 +414,38 @@
           <xsl:variable name="depth" as="xs:integer">
             <xsl:apply-templates select="." mode="block-depth"/>
           </xsl:variable>
-          <xsl:comment>depth <xsl:value-of select="$depth"/></xsl:comment>
-          <xsl:choose>  
-            <xsl:when test="$is-first">
-              <w:numPr>
-                <w:ilvl w:val="{if ($depth gt 0) then $depth - 1 else 0}"/>
-                <w:numId w:val="{ancestor::*[@x:list-number][1]/@x:list-number}"/>
-              </w:numPr>
-            </xsl:when>
-            <xsl:otherwise>
-              <w:ind w:left="{x:get-indent($depth)}"/>
-            </xsl:otherwise>
-          </xsl:choose>
+          <xsl:comment>depth <xsl:value-of select="$depth"/>
+          </xsl:comment>
+          <xsl:if test="not($ul or $stepsection)">
+            <xsl:choose>
+              <xsl:when test="$is-first">
+                <w:numPr>
+                  <xsl:choose>
+                    <xsl:when test="$intable">
+                      <w:ilvl w:val="{$depth}"/>
+                    </xsl:when>
+                    <xsl:when test="exists(ancestor::*[contains(@class, ' task/step ')])">
+                      <w:ilvl w:val="{$depth + 5}"/>
+                    </xsl:when>
+                    <xsl:otherwise>
+                      <w:ilvl w:val="{$depth + 6}"/>
+                    </xsl:otherwise>
+                  </xsl:choose>
+                  <w:numId w:val="{ancestor::*[@x:list-number][1]/@x:list-number}"/>
+                </w:numPr>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:choose>
+                  <xsl:when test="$intable">
+                    <w:ind w:left="{x:get-indent($depth - 1)}"/>
+                  </xsl:when>
+                  <xsl:otherwise>
+                    <w:ind w:left="{x:get-indent($depth)}"/>
+                  </xsl:otherwise>
+                </xsl:choose>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:if>
         </xsl:when>
       </xsl:choose>
     </w:pPr>
@@ -391,31 +453,84 @@
   
   <xsl:function name="x:get-indent" as="xs:integer">
     <xsl:param name="depth" as="xs:integer"/>
-    <xsl:sequence select="xs:integer($indent-base) + xs:integer($increment-base) * $depth"/>
+    <xsl:choose>
+      <xsl:when test="$depth lt 0">
+        <xsl:sequence select="0"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:sequence select="xs:integer($indent-base) + xs:integer($increment-base) * $depth"/>
+      </xsl:otherwise>
+    </xsl:choose>    
   </xsl:function>
   
+
   <xsl:template match="*" mode="block-depth" as="xs:integer">
-    <xsl:variable name="root" select="(ancestor::*[contains(@class, ' topic/table ') or contains(@class, ' topic/simpletable ') or contains(@class, ' topic/fig ')][1], /*)[1]" as="element()?" />
+    <!--xsl:choose>
+      <xsl:when test="contains(@class, ' topic/tgroup ')">
+        <xsl:variable name="root" select="/*[1]"  as="element()?" />
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:variable name="root" select="(ancestor::*[contains(@class, ' topic/table ') or contains(@class, ' topic/simpletable ') or contains(@class, ' topic/fig ')][1], /*)[1]" as="element()?" />
+      </xsl:otherwise>
+    </xsl:choose-->
+    <xsl:variable name="root" select="(ancestor::*[contains(@class, ' topic/tgroup ') or contains(@class, ' topic/simpletable ') or contains(@class, ' topic/fig ')][1], /*)[1]" as="element()?" />
     <xsl:variable name="ancestor-lis" select="ancestor::*[contains(@class, ' topic/li ')][. >> $root]" as="element()*"/>
-    <!--xsl:variable name="fig" select="ancestor-or-self::*[contains(@class, ' topic/fig ')][. >> $root][1]" as="element()?"/-->
-    <xsl:variable name="lists" select="ancestor-or-self::*[contains(@class, ' topic/ul ') or
-      contains(@class, ' topic/ol ')][. >> $root]" as="element()*"/>
-    <!--xsl:variable name="depth"
-      select="if ($fig)
-      then count($lists[. >> $fig])
-      else count($lists)" as="xs:integer"/-->
-    <xsl:sequence select="count($lists)"/>
+    <xsl:variable name="ul-lists" select="ancestor-or-self::*[contains(@class, ' topic/ul ')][. >> $root]" as="element()*"/>
+    <xsl:variable name="ol-lists" select="ancestor-or-self::*[contains(@class, ' topic/ol ')][. >> $root]" as="element()*"/>  
+    <xsl:variable name="depth" select="count($ul-lists) + count($ol-lists)" as="xs:integer"/>
+    <xsl:choose>
+      <xsl:when test="count($ol-lists) gt 0">
+        <xsl:sequence select="$depth - 1"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:sequence select="$depth"/>
+      </xsl:otherwise>
+    </xsl:choose>  
   </xsl:template>
   
-  <xsl:template match="*[contains(@class, ' topic/p ')]" name="p">
+  <xsl:template match="*[contains(@class, ' topic/p ')]" name="p" priority="20">
+    <!--OXYGEN PATCH FOR #58-->
+    <xsl:param name="applyTemplates" select="true()"/>
     <xsl:param name="prefix" as="node()*" select="()"/>
+    <xsl:param name="step" select="false()"/>
     <w:p>
       <!--xsl:call-template name="check-table-entry"/-->
+      <!--tanxl PATCH-->
+      <xsl:variable name="has_id" select="exists(@id)" as="xs:boolean"/>
+      <xsl:variable name="is_cmd" select="(contains(@class, ' task/cmd ')) and (exists(../@id))" as="xs:boolean"/>
+      <w:pPr><xsl:comment>has_id: <xsl:value-of select="@id"/></xsl:comment></w:pPr>
       <xsl:call-template name="generate-block-style"/>
+      <xsl:choose>
+        <xsl:when test="$is_cmd">
+          <xsl:call-template name="start-bookmark">
+            <xsl:with-param name="node" select=".." as="element()"/>
+          </xsl:call-template>
+        </xsl:when>
+        <xsl:when test="$has_id">
+          <xsl:call-template name="start-bookmark">
+            <xsl:with-param name="node" select="." as="element()"/>
+          </xsl:call-template>
+        </xsl:when>
+      </xsl:choose>
       <xsl:if test="exists($prefix)">
         <xsl:copy-of select="$prefix"/>
       </xsl:if>
-      <xsl:apply-templates/>
+      <!--OXYGEN PATCH FOR #58-->
+      <xsl:if test="$applyTemplates">
+        <xsl:apply-templates/>
+      </xsl:if>
+      <xsl:choose>
+        <xsl:when test="$is_cmd">
+          <xsl:call-template name="end-bookmark">
+            <xsl:with-param name="node" select=".." as="element()"/>
+          </xsl:call-template>
+        </xsl:when>
+        <xsl:when test="$has_id">
+          <xsl:call-template name="end-bookmark">
+            <xsl:with-param name="node" select="." as="element()"/>
+          </xsl:call-template>
+        </xsl:when>
+      </xsl:choose>
     </w:p>
   </xsl:template>
   
@@ -429,6 +544,17 @@
   
   <xsl:template match="*[contains(@class, 'topic/pre ')]" mode="block-style">
     <w:pStyle w:val="HTMLPreformatted"/>
+    <xsl:variable name="depth" as="xs:integer">
+      <xsl:apply-templates select="." mode="block-depth"/>
+    </xsl:variable>
+    <xsl:choose>
+      <xsl:when test="exists(ancestor::*[contains(@class, ' topic/entry ') or contains(@class, ' topic/stentry ') or contains(@class, ' topic/dlentry ') ])">
+        <w:ind w:left="{x:get-indent($depth - 1)}"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <w:ind w:left="{x:get-indent($depth)}"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
    
   <xsl:template match="*[contains(@class, ' topic/lines ')]" name="lines">
@@ -460,6 +586,12 @@
                       select="if (exists($width) and exists($height))
                                then x:scale-to-max-box($width, $height)
                               else ()"/>
+        <xsl:variable name="nofig" select="not(exists(ancestor::*[contains(@class, ' topic/fig ')]))" as="xs:boolean"/>
+        <xsl:if test="$nofig">
+          <xsl:call-template name="start-bookmark">
+            <xsl:with-param name="node" select="."/>
+          </xsl:call-template>
+        </xsl:if>
         <w:r>
           <xsl:if test="exists($styles)">
             <w:rPr>
@@ -485,7 +617,18 @@
                          <xsl:text>media/</xsl:text>
                          <xsl:choose>
                            <xsl:when test="ends-with(@href, '.svg')">
-                             <xsl:value-of select="replace(@href, '\.svg$', '.emf')"/>
+                             <xsl:variable name="fileName">
+                               <xsl:choose>
+                               <!--EXM-44025 Use only last part of href path.-->
+                                 <xsl:when test="contains(@href, '/')">
+                                   <xsl:value-of select="tokenize(@href, '/')[last()]"/>                    
+                                 </xsl:when>
+                                 <xsl:otherwise>
+                                   <xsl:value-of select="@href"/>
+                                 </xsl:otherwise>
+                               </xsl:choose>
+                             </xsl:variable>
+                             <xsl:value-of select="replace($fileName, '\.svg$', '.emf')"/>
                            </xsl:when>
                            <xsl:otherwise>
                              <xsl:value-of select="@href"/>
@@ -524,6 +667,11 @@
            </wp:inline>
          </w:drawing>
        </w:r>
+       <xsl:if test="$nofig">
+          <xsl:call-template name="end-bookmark">
+            <xsl:with-param name="node" select="."/>
+          </xsl:call-template>
+        </xsl:if>
       </xsl:when>
       <xsl:otherwise>
         <w:r>
@@ -561,7 +709,7 @@
       <xsl:call-template name="image.inline"/>
     </w:p>
   </xsl:template>
-  
+
   <xsl:template match="*[contains(@class, ' topic/image ')][@placement = 'break']" mode="block-style">
     <xsl:if test="exists(@align)">
       <w:jc w:val="{@align}"/>
@@ -585,13 +733,15 @@
       <xsl:apply-templates select="*[contains(@class, ' topic/dlentry ')]"/>
     </w:tbl>
   </xsl:template>
-  
+
+  <!--TANXL PATCHED-->
   <xsl:template match="*[contains(@class, ' topic/dl ')]" mode="block-style">
     <xsl:variable name="depth" as="xs:integer">
       <xsl:apply-templates select="." mode="block-depth"/>
     </xsl:variable>
     <w:tblLayout w:type="autofit"/>
-    <w:tblStyle w:val="TableGrid"/>
+    <w:tblStyle w:val="Tablenohead"/>
+    <!--w:tblStyle w:val="TableGrid"/-->
     <w:tblW w:w="0" w:type="auto"/>
     <w:tblInd w:w="{x:get-indent($depth)}" w:type="dxa"/>
     <w:tblLook w:val="04A0"/>
@@ -657,11 +807,25 @@
   <xsl:template match="*[contains(@class, ' topic/ul ')]/*[contains(@class, ' topic/li ')]/*[1]" priority="10" mode="block-style">
     <xsl:variable name="break" as="element()"
       select="ancestor::*[contains(@class, ' topic/topic ') or contains(@class, ' topic/table ') or contains(@class, ' topic/simpletable ')][1]"/>
-    <xsl:variable name="depth" as="xs:integer"
-      select="count(ancestor::*[contains(@class, ' topic/ul ') or contains(@class, ' topic/ol ')][. >> $break])"/>
+    <!--xsl:variable name="depth" as="xs:integer"
+      select="count(ancestor::*[contains(@class, ' topic/ul ') or contains(@class, ' topic/ol ')][. >> $break])"/-->
+    <xsl:variable name="instep" as="xs:boolean" select="exists(ancestor::*[contains(@class, ' task/step ')])"/>
+    <xsl:variable name="depth" as="xs:integer">
+        <xsl:apply-templates select="." mode="block-depth"/>
+      </xsl:variable>
+    <!--xsl:variable name="depth" as="xs:integer" select="if ($instep) then $dp -1 else $dp"/-->
+    <xsl:variable name="intable" as="xs:boolean" select="exists(ancestor::*[contains(@class, ' topic/entry ') or contains(@class, ' topic/stentry ') or contains(@class, ' topic/dlentry ')])"/>
     <w:pStyle w:val="ListParagraph">
       <xsl:attribute name="w:val">
-        <xsl:text>ListBullet</xsl:text>
+        <xsl:choose>
+          <xsl:when test="$intable">
+            <xsl:text>ItemListinTable</xsl:text>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>ItemList</xsl:text>
+          </xsl:otherwise>
+        </xsl:choose>
+        <!--xsl:if test="$depth gt 1"-->
         <xsl:if test="$depth gt 1">
           <xsl:value-of select="$depth"/>
         </xsl:if>
@@ -678,12 +842,38 @@
   <xsl:template match="*[contains(@class, ' topic/ol ')]/*[contains(@class, ' topic/li ')]/*[1]" mode="block-style" priority="10">
     <xsl:variable name="break" as="element()"
       select="ancestor::*[contains(@class, ' topic/topic ') or contains(@class, ' topic/table ') or contains(@class, ' topic/simpletable ')][1]"/>
+    <!--xsl:variable name="depth" as="xs:integer"
+      select="count(ancestor::*[contains(@class, ' topic/ul ') or contains(@class, ' topic/ol ')][. >> $break])"/-->
+    <!--xsl:variable name="depth" as="xs:integer">
+      <xsl:apply-templates select="." mode="block-depth"/>
+    </xsl:variable-->
     <xsl:variable name="depth" as="xs:integer"
-      select="count(ancestor::*[contains(@class, ' topic/ul ') or contains(@class, ' topic/ol ')][. >> $break])"/>
+      select="count(ancestor::*[contains(@class, ' topic/ol ')][. >> $break])"/>
+    <xsl:variable name="stepsection" as="xs:boolean" select="contains(../@class, 'task/stepsection')"/>
+    <xsl:variable name="intable" as="xs:boolean" select="exists(ancestor::*[contains(@class, ' topic/entry ') or contains(@class, ' topic/stentry ') or contains(@class, ' topic/dlentry ')])"/>
     <w:pStyle w:val="ListParagraph">
-      <xsl:attribute name="w:val">
+      <!--xsl:attribute name="w:val">
         <xsl:text>ListNumber</xsl:text>
         <xsl:if test="$depth gt 1">
+          <xsl:value-of select="$depth"/>
+        </xsl:if>
+      </xsl:attribute-->
+      <xsl:attribute name="w:val">
+        <xsl:choose>
+          <xsl:when test="$intable">
+            <xsl:text>ItemStepinTable</xsl:text>
+          </xsl:when>
+          <xsl:when test="$stepsection">
+            <xsl:text>Caption</xsl:text>
+          </xsl:when>
+          <xsl:when test="($instep = 'yes') and contains(@class, ' task/cmd ') and contains(../@class, ' task/step ')">
+            <xsl:text>INStep</xsl:text>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>ItemStep</xsl:text>
+          </xsl:otherwise>
+        </xsl:choose>
+        <xsl:if test="$depth gt 1 and not($stepsection)">
           <xsl:value-of select="$depth"/>
         </xsl:if>
       </xsl:attribute>
@@ -715,6 +905,8 @@
       <xsl:otherwise>
         <xsl:call-template name="p">
           <xsl:with-param name="prefix" select="$prefix"/>
+          <!--OXYGEN PATCH FOR #58-->
+          <xsl:with-param name="applyTemplates" select="false()"/>
         </xsl:call-template>
         <xsl:apply-templates select="*"/>
       </xsl:otherwise>
@@ -734,7 +926,10 @@
           <xsl:with-param name="id" select="concat(upper-case(substring($type, 1, 1)),
                                                    substring($type, 2))"/>
         </xsl:call-template>
-        <xsl:text>:</xsl:text>
+        <xsl:call-template name="getVariable">
+          <xsl:with-param name="id" select="'ColonSymbol'"/>
+        </xsl:call-template>
+        <!--xsl:text>:</xsl:text-->
       </w:t>
       <!--w:tab/-->
       <w:t>
@@ -759,17 +954,17 @@
     </xsl:choose>
   </xsl:function>
   
-  <xsl:template match="*[contains(@class, ' topic/note ')]" mode="block-style">
+  <!--xsl:template match="*[contains(@class, ' topic/note ')]" mode="block-style">
     <w:pStyle w:val="Note"/>
-  </xsl:template>
+  </xsl:template-->
   
-  <xsl:template match="*[contains(@class, ' topic/li ')]//*[contains(@class, ' topic/note ')]" mode="block-style" priority="10">
+  <!--xsl:template match="*[contains(@class, ' topic/li ')]//*[contains(@class, ' topic/note ')]" mode="block-style" priority="10">
     <w:pStyle w:val="ListNote"/>
   </xsl:template>
   
   <xsl:template match="*[contains(@class, ' topic/note ')]//*[contains(@class, ' topic/li ')]//*" mode="block-style">
     <w:pStyle w:val="ListNote"/>
-  </xsl:template>
+  </xsl:template-->
     
   <!-- Glossary -->
     

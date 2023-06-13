@@ -195,6 +195,7 @@
     <!-- Attempt to determine whether the reference is at the beginning of a sentence. -->
     <xsl:variable name="context"
       select="normalize-space(string-join(preceding-sibling::text(), ' '))" as="xs:string"/>
+    <xsl:comment>context <xsl:value-of select="$context"/></xsl:comment>
     <!-- pick the containing element, disregarding p -->
     <xsl:variable name="container" select="ancestor::*[not(contains(@class, ' topic/p '))][1]"
       as="element()?"/>
@@ -218,10 +219,19 @@
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
-
     <xsl:choose>
       <xsl:when test="empty($target)">
         <xsl:copy-of select="$contents"/>
+      </xsl:when>
+      <xsl:when test="exists(./processing-instruction('ditaot')[. = 'usertext'])">
+        <w:hyperlink w:anchor="{x:bookmark-name($bookmark-prefix.ref, $target)}">
+          <w:r>
+            <w:rPr>
+              <w:rStyle w:val="Hyperlink"/>
+            </w:rPr>
+            <w:t><xsl:copy-of select="$contents"/></w:t>
+          </w:r>
+        </w:hyperlink>
       </xsl:when>
       <xsl:when
         test="contains($target/@class, ' topic/topic ') and not(contains($target/@class, ' glossentry/glossentry '))">
@@ -414,12 +424,15 @@
         <w:r>
           <w:instrText>
             <xsl:attribute name="xml:space">preserve</xsl:attribute>
-            <xsl:text> </xsl:text>
+            <xsl:text></xsl:text>
             <xsl:choose>
               <xsl:when test="false()">PAGEREF </xsl:when>
               <xsl:otherwise>REF </xsl:otherwise>
             </xsl:choose>
             <xsl:value-of select="x:bookmark-name($bookmark-prefix.ref, $target)"/>
+            <xsl:if test="@type = 'step'">
+              <xsl:text> \r</xsl:text>
+            </xsl:if>
             <xsl:text> \h </xsl:text>
           </w:instrText>
         </w:r>
@@ -464,33 +477,46 @@
     <xsl:param name="capitalize" select="true()" as="xs:boolean"/>
     <w:r>
       <!-- FIXME: Maybe this should be done with a text-transform -->
-      <xsl:choose>
+      <w:t>
+        <xsl:call-template name="getVariable">
+          <xsl:with-param name="id" select="'Table'"/>
+        </xsl:call-template>
+        <xsl:text>&#xA0;</xsl:text>
+      </w:t>
+      <!--xsl:choose>
         <xsl:when test="$capitalize">
           <w:t>Table&#xA0;</w:t>
         </xsl:when>
         <xsl:otherwise>
           <w:t>table&#xA0;</w:t>
         </xsl:otherwise>
-      </xsl:choose>
+      </xsl:choose-->
     </w:r>
   </xsl:template>
 
   <xsl:template match="*[contains(@class, ' topic/fig ')]" mode="xref-prefix">
     <xsl:param name="capitalize" select="true()" as="xs:boolean"/>
     <w:r>
-      <xsl:choose>
+      <w:t>
+        <xsl:call-template name="getVariable">
+          <xsl:with-param name="id" select="'Figure'"/>
+        </xsl:call-template>
+        <xsl:text>&#xA0;</xsl:text>
+      </w:t>
+      <!--xsl:choose>
         <xsl:when test="$capitalize">
           <w:t>Figure&#xA0;</w:t>
         </xsl:when>
         <xsl:otherwise>
           <w:t>figure&#xA0;</w:t>
         </xsl:otherwise>
-      </xsl:choose>
+      </xsl:choose-->
     </w:r>
   </xsl:template>
 
   <xsl:template match="*[contains(@class, ' topic/xref ')]" mode="inline-style">
-    <w:u w:val="single"/>
+    <w:rStyle w:val="Hyperlink"/>
+    <!--w:u w:val="single"/-->
   </xsl:template>
 
   <xsl:template match="*[contains(@class, ' topic/xref ')][@scope = 'external']" mode="inline-style"

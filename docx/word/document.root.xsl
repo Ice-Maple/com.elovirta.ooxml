@@ -72,38 +72,9 @@
   </xsl:template>
 
   <xsl:template match="/" mode="cover">
-    <w:p>
-      <w:pPr>
-        <w:pStyle w:val="Title"/>
-        <w:spacing w:before="720"/>
-        <w:rPr>
-          <w:lang w:val="{$language}"/>
-        </w:rPr>
-      </w:pPr>
-      <w:r>
-        <w:fldChar w:fldCharType="begin"/>
-      </w:r>
-      <w:r>
-        <w:rPr>
-          <w:lang w:val="{$language}"/>
-        </w:rPr>
-        <w:instrText xml:space="preserve">TITLE \* MERGEFORMAT</w:instrText>
-      </w:r>
-      <w:r>
-        <w:fldChar w:fldCharType="separate"/>
-      </w:r>
-      <w:r>
-        <w:rPr>
-          <w:lang w:val="{$language}"/>
-        </w:rPr>
-        <w:t>
-          <xsl:call-template name="get-title"/>
-        </w:t>
-      </w:r>
-      <w:r>
-        <w:fldChar w:fldCharType="end"/>
-      </w:r>
-    </w:p>
+    <xsl:for-each select="$template/w:document/w:body/*[position() lt (count(//w:body/w:sdt[1]/preceding-sibling::node()) + 1)]">
+      <xsl:copy-of select="."/>
+    </xsl:for-each>
   </xsl:template>
 
   <xsl:template match="/" mode="legal"/>

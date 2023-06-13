@@ -16,14 +16,40 @@
                exclude-result-prefixes="x xs"
                version="2.0">
 
-  <xsl:variable name="generate-task-labels" select="false()" as="xs:boolean"/>
+  <xsl:variable name="generate-task-labels" select="true()" as="xs:boolean"/>
+
+  <xsl:template match="*[contains(@class, ' task/context ')]">
+    <xsl:variable name="context" select="not(empty(text())) or exists(./p)"></xsl:variable>
+    <xsl:if test="$generate-task-labels and $context">
+      <xsl:call-template name="section.title">
+        <xsl:with-param name="contents">
+          <w:r>
+            <w:t>
+              <xsl:call-template name="getVariable">
+                <xsl:with-param name="id" select="'task_context'"/>
+              </xsl:call-template>
+            </w:t>
+          </w:r>
+        </xsl:with-param>
+        <xsl:with-param name="style">
+          <xsl:call-template name="block-style-section.title"/>
+        </xsl:with-param>
+      </xsl:call-template>
+    </xsl:if>
+    <xsl:apply-templates select="*"/>
+  </xsl:template>
+
 
   <xsl:template match="*[contains(@class, ' task/prereq ')]">
     <xsl:if test="$generate-task-labels">
       <xsl:call-template name="section.title">
         <xsl:with-param name="contents">
           <w:r>
-            <w:t>Prerequisites</w:t>
+            <w:t>
+              <xsl:call-template name="getVariable">
+                <xsl:with-param name="id" select="'task_prereq'"/>
+              </xsl:call-template>
+            </w:t>
           </w:r>
         </xsl:with-param>
         <xsl:with-param name="style">
@@ -39,7 +65,31 @@
       <xsl:call-template name="section.title">
         <xsl:with-param name="contents">
           <w:r>
-            <w:t>Post-requisites</w:t>
+            <w:t>
+              <xsl:call-template name="getVariable">
+                <xsl:with-param name="id" select="'task_postreq'"/>
+              </xsl:call-template>
+            </w:t>
+          </w:r>
+        </xsl:with-param>
+        <xsl:with-param name="style">
+          <xsl:call-template name="block-style-section.title"/>
+        </xsl:with-param>
+      </xsl:call-template>
+    </xsl:if>
+    <xsl:apply-templates select="*"/>
+  </xsl:template>
+
+  <xsl:template match="*[contains(@class, ' task/example ')]">
+    <xsl:if test="$generate-task-labels">
+      <xsl:call-template name="section.title">
+        <xsl:with-param name="contents">
+          <w:r>
+            <w:t>
+              <xsl:call-template name="getVariable">
+                <xsl:with-param name="id" select="'task_example'"/>
+              </xsl:call-template>
+            </w:t>
           </w:r>
         </xsl:with-param>
         <xsl:with-param name="style">
@@ -56,7 +106,11 @@
       <xsl:call-template name="section.title">
         <xsl:with-param name="contents">
           <w:r>
-            <w:t>Procedure</w:t>
+            <w:t>
+              <xsl:call-template name="getVariable">
+                <xsl:with-param name="id" select="'task_procedure'"/>
+              </xsl:call-template>
+            </w:t>
           </w:r>
         </xsl:with-param>
         <xsl:with-param name="style">
@@ -64,7 +118,18 @@
         </xsl:with-param>
       </xsl:call-template>
     </xsl:if>
+    <xsl:variable name="has_id" select="exists(@id)" as="xs:boolean"/>
+    <xsl:if test="$has_id">
+      <xsl:call-template name="start-bookmark">
+        <xsl:with-param name="node" select="."/>
+      </xsl:call-template>
+    </xsl:if>
     <xsl:apply-templates select="*"/>
+    <xsl:if test="$has_id">
+      <xsl:call-template name="end-bookmark">
+        <xsl:with-param name="node" select="."/>
+      </xsl:call-template>
+    </xsl:if>
   </xsl:template>
   
   <xsl:template match="*[contains(@class, ' task/result ')]">
@@ -72,7 +137,11 @@
       <xsl:call-template name="section.title">
         <xsl:with-param name="contents">
           <w:r>
-            <w:t>Result</w:t>
+            <w:t>
+              <xsl:call-template name="getVariable">
+                <xsl:with-param name="id" select="'task_results'"/>
+              </xsl:call-template>
+            </w:t>
           </w:r>
         </xsl:with-param>
         <xsl:with-param name="style">
@@ -84,7 +153,7 @@
   </xsl:template>
   
   <xsl:template match="*[contains(@class, ' task/steps ')]/*[contains(@class, ' task/step ')]">
-    <xsl:apply-templates select="*"/>
+	  <xsl:apply-templates select="*"/>
   </xsl:template>
   
   <xsl:template match="*[contains(@class, ' task/substeps ')]/*[contains(@class, ' task/substep ')]">
@@ -96,7 +165,17 @@
   </xsl:template-->
 
   <xsl:template match="*[contains(@class, ' task/cmd ')]">
-    <xsl:call-template name="p"/>
+	  <!--tanxl PATCH-->
+	<xsl:choose>
+	  <xsl:when test="($instep = 'yes') and (contains(../../@class, ' topic/ol '))">
+	  <xsl:call-template name="p">
+		  <xsl:with-param name="step" select="true()"/>
+	  </xsl:call-template>
+  	</xsl:when>
+	<xsl:otherwise>
+	  <xsl:call-template name="p"/>
+	</xsl:otherwise>
+       </xsl:choose>
   </xsl:template>
   
   <xsl:template match="*[contains(@class, ' task/info ')]">

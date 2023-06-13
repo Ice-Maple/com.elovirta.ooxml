@@ -30,10 +30,12 @@
   <xsl:function name="x:block-content" as="xs:boolean">
     <xsl:param name="element" as="node()"/>
     <xsl:variable name="class" select="string($element/@class)" as="xs:string"/>
+    <!-- OXYGEN PATCH FOR EXM-40361 -->
     <xsl:sequence
       select="
         some $c in $x:block-content-classes
-          satisfies contains($class, $c)"
+          satisfies contains($class, $c)
+          or (contains($class, ' topic/desc ') and ($element/parent::table or $element/parent::fig))"
     />
   </xsl:function>
 
@@ -74,11 +76,13 @@
   <xsl:function name="x:is-block" as="xs:boolean">
     <xsl:param name="element" as="node()"/>
     <xsl:variable name="class" select="string($element/@class)" as="xs:string"/>
+    <!-- OXYGEN PATCH FOR EXM-40361 -->
     <xsl:sequence
       select="
         some $c in $x:is-block-classes
-          satisfies contains($class, $c) or
-          (contains($class, ' topic/image ') and $element/@placement = 'break')"
+          satisfies contains($class, $c) 
+          or (contains($class, ' topic/image ') and $element/@placement = 'break')
+          or (contains($class, ' topic/desc ') and ($element/parent::table or $element/parent::fig))"
     />
   </xsl:function>
 
